@@ -1,0 +1,80 @@
+# ========================== IntelliJ IDEA 专属文件 ==========================
+# IDEA 主配置目录（包含项目配置、缓存、插件等）
+.idea/
+# 项目编译生成的 iml 模块文件（每个模块一个）
+*.iml
+# 项目编译输出目录（IDEA 默认编译产物路径）
+out/
+# 项目编译输出目录（部分工程会用 target 替代 out，Maven/Gradle 也常用）
+target/
+# IDEA 自动生成的项目文件（旧版 IDEA 可能出现）
+*.ipr
+*.iws
+# 本地运行配置（如启动参数、环境变量等，无需提交）
+*.launch
+# IDEA 临时文件
+*.tmp
+# 断点配置文件
+breakpoints/
+# 代码风格配置（若团队统一可取消注释，否则排除）
+# .idea/codeStyles/
+# 版本控制配置（一般无需提交）
+.idea/vcs.xml
+
+# ========================== Java 工程通用排除项 ==========================
+# Java 编译生成的字节码文件
+*.class
+# Java 打包生成的 JAR/WAR/EAR 包
+*.jar
+*.war
+*.ear
+# Java 文档生成的 API 文档（如 javadoc 输出）
+apidocs/
+# 临时文件
+*.tmp
+*.bak
+*.swp
+*.swo
+# 日志文件（运行时生成，无需提交）
+*.log
+logs/
+# 本地配置文件（如数据库密码、自定义环境变量）
+*.properties.local
+*.yml.local
+*.yaml.local
+# 缓存文件
+*.cache
+# 压缩包
+*.zip
+*.tar.gz
+*.rar
+
+# ========================== 构建工具相关（Maven/Gradle） ==========================
+# Maven 本地仓库缓存（若工程有本地仓库配置）
+.m2/
+# Gradle 缓存和构建文件
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+build/
+# Gradle 启动脚本（若无需提交）
+gradlew
+gradlew.bat
+# Maven 编译临时目录
+target/
+# Maven 私服配置（含账号密码）
+settings.xml
+
+# ========================== 操作系统通用垃圾文件 ==========================
+# Windows 系统
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+# macOS 系统
+.DS_Store
+.AppleDouble
+.LSOverride
+# Linux 系统
+*~
+# 权限临时文件
+.fuse_hidden*
