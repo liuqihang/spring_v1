@@ -7,13 +7,13 @@ import org.spring.v1.DefaultListableBeanFactory;
 public class MainTest {
 
     public static void main(String[] args) throws Exception {
-        BeanDefinition beanDefinition = new BeanDefinition();
-        beanDefinition.setBeanClass(UserService.class);
 
         DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
-        beanFactory.registerBeanDefinition("userService", beanDefinition);
+        beanFactory.registerBeanDefinition("userService", new BeanDefinition(UserService.class));
 
-        UserService us= (UserService) beanFactory.getBean("userService");
-        us.hello();
+        UserService us1= (UserService) beanFactory.getBean("userService");
+        UserService us2= (UserService) beanFactory.getBean("userService");
+        us1.hello();
+        System.out.println(us1 == us2);
     }
 }

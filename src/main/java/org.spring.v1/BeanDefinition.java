@@ -8,12 +8,8 @@ public class BeanDefinition {
         return this.beanClass;
     }
 
-    public void setBeanClass(Class<?> beanClass){
+    public BeanDefinition(Class<?> beanClass){
         this.beanClass = beanClass;
     }
-
-//    public BeanDefinition(Class<?> beanClass){
-//        this.beanClass = beanClass;
-//    }
 
 }
