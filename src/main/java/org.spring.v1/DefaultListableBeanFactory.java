@@ -1,10 +1,12 @@
 package org.spring.v1;
 
-import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+
 public class DefaultListableBeanFactory implements BeanFactory{
+
 
     private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<String, BeanDefinition>();
 
@@ -16,7 +18,7 @@ public class DefaultListableBeanFactory implements BeanFactory{
     }
 
     @Override
-    public Object getBean(String beanName) throws Exception {
+    public Object getBean(String beanName) {
         Object singleton = singletonObjects.get(beanName);
         if(singleton != null){
             return singleton;
@@ -33,6 +35,9 @@ public class DefaultListableBeanFactory implements BeanFactory{
         // 实例化
         Object bean = instantiateBean(db);
 
+        // 属性填充
+        populateBean(bean);
+
         // 放入单例缓存
         singletonObjects.put(beanName, bean);
         return bean;
@@ -46,4 +51,30 @@ public class DefaultListableBeanFactory implements BeanFactory{
         }
         return null;
     }
+
+    private void populateBean(Object bean){
+        Class<?> clazz = bean.getClass();
+        for (Field field : clazz.getDeclaredFields()) {
+            if(field.isAnnotationPresent(Autowired.class)){
+                Class<?> dependencyType = field.getType();
+
+                String dependencyName = lowerFirst(dependencyType.getSimpleName());
+
+                Object dependency = getBean(dependencyName);
+                try {
+                    field.setAccessible(true);
+                    field.set(bean, dependency);
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+
+
+    private String lowerFirst(String name) {
+        return Character.toLowerCase(name.charAt(0)) + name.substring(1);
+    }
+
 }
