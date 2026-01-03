@@ -2,7 +2,7 @@ package org.spring.test.v1.service;
 
 import org.spring.v1.Autowired;
 
-public class UserService {
+public class UserService implements IUserService {
 
     @Autowired
     private UserRepository userRepository;

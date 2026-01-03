@@ -1,5 +1,6 @@
 package org.spring.test.v1;
 
+import org.spring.test.v1.service.IUserService;
 import org.spring.test.v1.service.UserRepository;
 import org.spring.test.v1.service.UserService;
 import org.spring.v1.BeanDefinition;
@@ -13,7 +14,9 @@ public class MainTest {
         beanFactory.registerBeanDefinition("userService", new BeanDefinition(UserService.class));
         beanFactory.registerBeanDefinition("userRepository", new BeanDefinition(UserRepository.class));
 
-        UserService us1= (UserService) beanFactory.getBean("userService");
+        // 这里糊涂了，绕了半天没理解，忽略了JDK代理必须有实现接口。所以这里返回的是接口类，不然直接强转为UserService会报错的
+        IUserService us1= (IUserService)beanFactory.getBean("userService");
+        System.out.println(us1);
 //        UserService us2= (UserService) beanFactory.getBean("userService");
         us1.hello();
 //        System.out.println(us1 == us2);

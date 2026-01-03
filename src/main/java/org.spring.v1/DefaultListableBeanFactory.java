@@ -1,20 +1,26 @@
 package org.spring.v1;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
 
 public class DefaultListableBeanFactory implements BeanFactory{
 
-
     private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<String, BeanDefinition>();
 
-    //一级缓存
+    //一级缓存( 解决singleton的问题, 避免getBean同一个对象，堆地址却不同)
     private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>();
 
     //二级缓存( 设置一个”提前暴露区“)
     private final Map<String, Object> earlySingletonObjects = new ConcurrentHashMap<>();
+
+    //三级缓存( 提供早期对象bean引用的能力)
+    private final Map<String, ObjectFactory<?>> singletonFactories = new ConcurrentHashMap<>();
+
+    //存储早期曝光的bean集合
+    private final Set<String> earlyExposedBeans =ConcurrentHashMap.newKeySet();
 
     public void registerBeanDefinition(String beanName, BeanDefinition beanDefinition) {
         beanDefinitionMap.put(beanName, beanDefinition);
@@ -23,7 +29,6 @@ public class DefaultListableBeanFactory implements BeanFactory{
     //这里有一个职责的区分：getBean只负责读缓存
     @Override
     public Object getBean(String beanName) {
-//        Object singleton = singletonObjects.get(beanName);
         Object singleton = getSingleton(beanName);
         if(singleton != null){
             return singleton;
@@ -37,7 +42,17 @@ public class DefaultListableBeanFactory implements BeanFactory{
         if(singleton == null){
             Object earlySingleton = earlySingletonObjects.get(beanName);
             if(earlySingleton == null){
-                return null;
+                ObjectFactory<?> objectFactory = singletonFactories.get(beanName);
+                if(objectFactory != null){
+                    Object earlyReference = objectFactory.getObject();
+                    earlySingletonObjects.put(beanName, earlyReference);
+                    singletonFactories.remove(beanName);
+
+                    earlyExposedBeans.add(beanName);
+                    return earlyReference;
+                }else {
+                    return null;
+                }
             }
             return earlySingleton;
         }else {
@@ -53,15 +68,26 @@ public class DefaultListableBeanFactory implements BeanFactory{
         }
         // 实例化
         Object bean = instantiateBean(db);
-        earlySingletonObjects.put(beanName, bean);
+
+        //放入三级缓存
+        singletonFactories.put(beanName, ()->getEarlyBeanReference(beanName, bean));
 
         // 属性填充
         populateBean(bean);
 
-        // 放入一级缓存、移除二级缓存
-        singletonObjects.put(beanName, bean);
-//        earlySingletonObjects.remove(beanName);
-        return bean;
+        Object exposeObject = bean;
+
+        if(earlyExposedBeans.contains(beanName)){
+            exposeObject = earlySingletonObjects.get(beanName);
+        }else {
+            exposeObject = initializeBean(bean);
+        }
+
+        // 放入一级缓存,移除二级、三级缓存
+        singletonObjects.put(beanName, exposeObject);
+        earlySingletonObjects.remove(beanName);
+        singletonFactories.remove(beanName);
+        return exposeObject;
     }
 
     private Object instantiateBean(BeanDefinition beanDefinition){
@@ -125,7 +151,8 @@ public class DefaultListableBeanFactory implements BeanFactory{
                 String dependencyName = lowerFirst(dependencyType.getSimpleName());
 
                 //populateBean方法内部调用getBean()是Spring 能形成 “依赖图/依赖关系” 的根本原因
-                Object dependency = getBean(dependencyName);
+//                Object dependency = getBean(dependencyName);
+                Object dependency = getBeanByType(dependencyType);
                 try {
                     field.setAccessible(true);
                     field.set(bean, dependency);
@@ -136,10 +163,55 @@ public class DefaultListableBeanFactory implements BeanFactory{
         }
     }
 
-
-
     private String lowerFirst(String name) {
         return Character.toLowerCase(name.charAt(0)) + name.substring(1);
+    }
+
+    // AOP关键扩展点
+    private Object getEarlyBeanReference(String name, Object bean){
+        //这里就模拟名称以Service结尾的就需要代理吧
+        if(bean.getClass().getSimpleName().endsWith("Service")){
+            return Proxy.newProxyInstance(
+                    bean.getClass().getClassLoader(),
+                    bean.getClass().getInterfaces(),
+                    (proxy, method, args) -> {
+                        System.out.println("[AOP before]" + method.getName());
+                        Object result = method.invoke(bean, args);
+                        System.out.println("[AOP after]" + method.getName());
+                        return result;
+                    }
+            );
+        }
+        return bean;
+    }
+
+    //初始化bean
+    private Object initializeBean(Object bean){
+        return bean;
+    }
+
+    private Object getBeanByType(Class<?> type){
+        Object candidate = null;
+        for (Map.Entry<String, BeanDefinition> entry : beanDefinitionMap.entrySet()) {
+            Class<?> beanClass = entry.getValue().getBeanClass();
+
+            if (type.isAssignableFrom(beanClass)) {
+                if (candidate != null) {
+                    throw new RuntimeException(
+                            "Multiple beans found for type " + type.getName()
+                    );
+                }
+                candidate = getBean(entry.getKey());
+            }
+        }
+
+        if (candidate == null) {
+            throw new RuntimeException(
+                    "No bean found for type " + type.getName()
+            );
+        }
+
+        return candidate;
     }
 
 }
