@@ -1,7 +1,8 @@
 package org.spring.v1;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,6 +22,12 @@ public class DefaultListableBeanFactory implements BeanFactory{
 
     //存储早期曝光的bean集合
     private final Set<String> earlyExposedBeans =ConcurrentHashMap.newKeySet();
+
+    private final List<BeanPostProcessor> postProcessors = new ArrayList<>();
+
+    public void addBeanPostProcessor(BeanPostProcessor beanPostProcessor){
+        postProcessors.add(beanPostProcessor);
+    }
 
     public void registerBeanDefinition(String beanName, BeanDefinition beanDefinition) {
         beanDefinitionMap.put(beanName, beanDefinition);
@@ -42,9 +49,9 @@ public class DefaultListableBeanFactory implements BeanFactory{
         if(singleton == null){
             Object earlySingleton = earlySingletonObjects.get(beanName);
             if(earlySingleton == null){
-                ObjectFactory<?> objectFactory = singletonFactories.get(beanName);
-                if(objectFactory != null){
-                    Object earlyReference = objectFactory.getObject();
+                ObjectFactory<?> singletonFactory = singletonFactories.get(beanName);
+                if(singletonFactory != null){
+                    Object earlyReference = singletonFactory.getObject();
                     earlySingletonObjects.put(beanName, earlyReference);
                     singletonFactories.remove(beanName);
 
@@ -69,8 +76,12 @@ public class DefaultListableBeanFactory implements BeanFactory{
         // 实例化
         Object bean = instantiateBean(db);
 
+        boolean earlyExposure = true;
+
         //放入三级缓存
-        singletonFactories.put(beanName, ()->getEarlyBeanReference(beanName, bean));
+        if(earlyExposure){
+            singletonFactories.put(beanName, ()->getEarlyBeanReference(beanName, bean));
+        }
 
         // 属性填充
         populateBean(bean);
@@ -80,7 +91,7 @@ public class DefaultListableBeanFactory implements BeanFactory{
         if(earlyExposedBeans.contains(beanName)){
             exposeObject = earlySingletonObjects.get(beanName);
         }else {
-            exposeObject = initializeBean(bean);
+            exposeObject = initializeBean(bean, beanName);
         }
 
         // 放入一级缓存,移除二级、三级缓存
@@ -168,26 +179,24 @@ public class DefaultListableBeanFactory implements BeanFactory{
     }
 
     // AOP关键扩展点
-    private Object getEarlyBeanReference(String name, Object bean){
-        //这里就模拟名称以Service结尾的就需要代理吧
-        if(bean.getClass().getSimpleName().endsWith("Service")){
-            return Proxy.newProxyInstance(
-                    bean.getClass().getClassLoader(),
-                    bean.getClass().getInterfaces(),
-                    (proxy, method, args) -> {
-                        System.out.println("[AOP before]" + method.getName());
-                        Object result = method.invoke(bean, args);
-                        System.out.println("[AOP after]" + method.getName());
-                        return result;
-                    }
-            );
+    private Object getEarlyBeanReference(String beanName, Object bean){
+        Object exposed = bean;
+        for (BeanPostProcessor bpp : postProcessors) {
+            if (bpp instanceof SmartInstantiationAwareBeanPostProcessor) {
+                exposed = ((SmartInstantiationAwareBeanPostProcessor) bpp)
+                        .getEarlyBeanReference(exposed, beanName);
+            }
         }
-        return bean;
+        return exposed;
     }
 
     //初始化bean
-    private Object initializeBean(Object bean){
-        return bean;
+    private Object initializeBean(Object bean, String beanName){
+        Object wrapped = bean;
+        for (BeanPostProcessor bpp : postProcessors) {
+            wrapped = bpp.postProcessAfterInitialization(wrapped, beanName);
+        }
+        return wrapped;
     }
 
     private Object getBeanByType(Class<?> type){
