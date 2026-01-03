@@ -148,7 +148,7 @@ public class DefaultListableBeanFactory implements BeanFactory{
             if(field.isAnnotationPresent(Autowired.class)){
                 Class<?> dependencyType = field.getType();
 
-                String dependencyName = lowerFirst(dependencyType.getSimpleName());
+//                String dependencyName = lowerFirst(dependencyType.getSimpleName());
 
                 //populateBean方法内部调用getBean()是Spring 能形成 “依赖图/依赖关系” 的根本原因
 //                Object dependency = getBean(dependencyName);
